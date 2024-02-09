@@ -100,8 +100,8 @@ def showHistogram():
   ax1.set_ylabel('Frequentie');
   ax1.set_ylim(0,1.1*max(N));
 
-  minimumResult = min(selectedResultsData)-1;
-  maximumResult = max(selectedResultsData)+1;
+  minimumResult = min(selectedResultsData)-10;
+  maximumResult = max(selectedResultsData)+10;
   bins = np.arange(minimumResult,maximumResult,binWidth);
   N, bins, patches = ax2.hist(selectedResultsData,bins=bins,rwidth=0.75);
 
