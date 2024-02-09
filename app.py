@@ -2,6 +2,7 @@ from shiny.express import input, render, ui
 from shiny import reactive
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 import pandas as pd
 
 #DEFINITION OF CONSTANTS
@@ -58,10 +59,10 @@ def showHistogram():
   selectedResultsData = selectedResults.get();
 
   binWidth = 1; #one bar for each number
-  if (input.useProportions()):
-    selectedResultsData = selectedResultsData/sampleSize;
-    binWidth = 0.01; #one bar for each percent
-    sampleSize = 1;
+  #if (input.useProportions()):
+    #selectedResultsData = selectedResultsData/sampleSize;
+    #binWidth = 0.01; #one bar for each percent
+    #sampleSize = 1;
 
   #Make figure
   fig, (ax1,ax2) = plt.subplots(1,2,figsize=(10,5));
@@ -94,11 +95,13 @@ def showHistogram():
   ax1.set_title('Uitgezoomd')
   ax1.set_xlabel('Aantal successen in een enkele steekproef (X)');
   ax1.set_xlim(0,sampleSize);
+  if (input.useProportions()):
+    ax1.xaxis.set_major_formatter(mtick.PercentFormatter(sampleSize))
   ax1.set_ylabel('Frequentie');
   ax1.set_ylim(0,1.1*max(N));
 
-  minimumResult = min(selectedResultsData);
-  maximumResult = max(selectedResultsData);
+  minimumResult = min(selectedResultsData)-1;
+  maximumResult = max(selectedResultsData)+1;
   bins = np.arange(minimumResult,maximumResult,binWidth);
   N, bins, patches = ax2.hist(selectedResultsData,bins=bins,rwidth=0.75);
 
@@ -128,6 +131,8 @@ def showHistogram():
   ax2.set_title('Ingezoomd')
   ax2.set_xlabel('Aantal successen in een enkele steekproef (X)');
   ax2.set_xlim(minimumResult,maximumResult);
+  if (input.useProportions()):
+    ax2.xaxis.set_major_formatter(mtick.PercentFormatter(sampleSize))
   ax2.set_ylabel('Frequentie');
   ax2.set_ylim(0,1.1*max(N));
 
