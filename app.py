@@ -15,8 +15,8 @@ with ui.sidebar(width=400):
     ui.markdown("<strong>Simulatie instellingen</strong>");
     #USER INPUT ELEMENTS
     ui.input_numeric("sampleSize", "Steekproefgrootte n",value=500,min=1,max=100000);
-    ui.input_slider("observedProportion", "Geobserveerde steekproefproportie p\u0302", value=0.32, min=0, max=1);
-    ui.input_slider("nullHypothesis", "Nulhypothese p\u2080", value=0.3, min=0, max=1);
+    ui.input_slider("observedProportion", "Geobserveerde steekproefproportie p\u0302", value=0.32, min=0, max=1, step=0.005);
+    ui.input_slider("nullHypothesis", "Nulhypothese p\u2080", value=0.3, min=0, max=1, step=0.005);
     ui.input_numeric("simulationSize", "Aantal simulaties onder de nulhypothese",value=10000,min=1,max=MAX_SIMS,step=50);
     ui.input_radio_buttons("testType", "Type van de test:", TEST_TYPES, selected="right", inline=False)
     ui.markdown("<strong>Visualisatie instellingen</strong>");
@@ -59,29 +59,25 @@ def showHistogram():
   selectedResultsData = selectedResults.get();
 
   binWidth = 1; #one bar for each number
-  #if (input.useProportions()):
-    #selectedResultsData = selectedResultsData/sampleSize;
-    #binWidth = 0.01; #one bar for each percent
-    #sampleSize = 1;
 
   #Make figure
   fig, (ax1,ax2) = plt.subplots(1,2,figsize=(10,5));
   bins = np.arange(0,sampleSize,binWidth);
-  N, bins, patches = ax1.hist(selectedResultsData,bins=bins,rwidth=0.75)
+  N, bins, patches = ax1.hist(selectedResultsData,bins=bins,rwidth=0.75,align='left')
 
   for i in range(0,np.size(bins)-1):
     match input.testType():
       case 'right':
-        if (bins[i]+bins[i+1])/2>observedProportion*sampleSize:
+        if bins[i]>=observedProportion*sampleSize:
           patches[i].set_facecolor('orange')
       case 'left':
-        if (bins[i]+bins[i+1])/2<observedProportion*sampleSize:
+        if bins[i]<=observedProportion*sampleSize:
           patches[i].set_facecolor('orange')
       case 'twosided':
         distance = abs(nullHypothesis - observedProportion)
         leftThreshold = sampleSize*(nullHypothesis - distance);
         rightThreshold = sampleSize*(nullHypothesis + distance);
-        if not((bins[i]+bins[i+1])/2 > leftThreshold and (bins[i]+bins[i+1])/2 < rightThreshold):
+        if not(bins[i] >= leftThreshold and bins[i]<= rightThreshold):
           patches[i].set_facecolor('orange')
 
   if showCutoffLine:
@@ -103,21 +99,21 @@ def showHistogram():
   minimumResult = min(selectedResultsData)-10;
   maximumResult = max(selectedResultsData)+10;
   bins = np.arange(minimumResult,maximumResult,binWidth);
-  N, bins, patches = ax2.hist(selectedResultsData,bins=bins,rwidth=0.75);
+  N, bins, patches = ax2.hist(selectedResultsData,bins=bins,rwidth=0.75,align='left');
 
   for i in range(0,np.size(bins)-1):
     match input.testType():
       case 'right':
-        if (bins[i]+bins[i+1])/2>observedProportion*sampleSize:
+        if bins[i]>=observedProportion*sampleSize:
           patches[i].set_facecolor('orange')
       case 'left':
-        if (bins[i]+bins[i+1])/2<observedProportion*sampleSize:
+        if bins[i]<=observedProportion*sampleSize:
           patches[i].set_facecolor('orange')
       case 'twosided':
         distance = abs(nullHypothesis - observedProportion)
-        leftThreshold = sampleSize*(nullHypothesis - distance);
-        rightThreshold = sampleSize*(nullHypothesis + distance);
-        if not((bins[i]+bins[i+1])/2 > leftThreshold and (bins[i]+bins[i+1])/2 < rightThreshold):
+        leftThreshold = int(sampleSize*(nullHypothesis - distance));
+        rightThreshold = int(sampleSize*(nullHypothesis + distance));
+        if not(bins[i] > leftThreshold and bins[i] < rightThreshold):
           patches[i].set_facecolor('orange')
 
   if showCutoffLine:
@@ -148,14 +144,14 @@ with ui.card():
     nullHypothesis = input.nullHypothesis();
     threshold = np.round(sampleSize*observedProportion,2);
     if "left" in input.testType():
-        x = ui.p('X <' + str(threshold))
+        x = ui.p('X \u2264' + str(threshold))
     if "right" in input.testType():
-        x = ui.p('X >' + str(threshold))
+        x = ui.p('X \u2265' + str(threshold))
     if "twosided" in input.testType():
       distance = abs(nullHypothesis - observedProportion)
       leftThreshold = sampleSize*(nullHypothesis - distance);
       rightThreshold = sampleSize*(nullHypothesis + distance);
-      x = ui.p(str(int(leftThreshold)) + ' > X  en X < ' + str(int(rightThreshold)))
+      x = ui.p('X \u2264' + str(int(leftThreshold)) + ' of X \u2265 ' + str(int(rightThreshold)))
     return x
 
 with ui.card():
@@ -172,18 +168,17 @@ with ui.card():
 
     threshold = np.round(sampleSize*observedProportion,2);
     if "left" in input.testType():
-        nbLargerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData<observedProportion*sampleSize])
+        nbLargerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData<=observedProportion*sampleSize])
         x = ui.p(str(nbLargerSampleProportions) + '/' + str(simulationSize) + '=' + str(np.round(nbLargerSampleProportions/simulationSize,4)));
     if "right" in input.testType():
-        nbLargerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData>observedProportion*sampleSize])
+        nbLargerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData>=observedProportion*sampleSize])
         x = ui.p(str(nbLargerSampleProportions) + '/' + str(simulationSize) + '=' + str(np.round(nbLargerSampleProportions/simulationSize,4)));
     if "twosided" in input.testType():
-      #Todo
       distance = abs(nullHypothesis - observedProportion)
       leftThreshold = sampleSize*(nullHypothesis - distance);
       rightThreshold = sampleSize*(nullHypothesis + distance);
-      nbLargerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData>rightThreshold])
-      nbSmallerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData<leftThreshold])
+      nbLargerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData>=rightThreshold])
+      nbSmallerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData<=leftThreshold])
       x = ui.p(str(int(nbLargerSampleProportions+nbSmallerSampleProportions)) + '/' + str(simulationSize) + '=' + str(np.round((nbSmallerSampleProportions+nbLargerSampleProportions)/simulationSize,4)));
     return x
   
