@@ -12,18 +12,18 @@ TEST_TYPES = {"right": "Eenzijdig rechts", "left": "Eenzijdig links", "twosided"
 ui.page_opts(title="Toetsen van hypotheses met simulaties - applet")
 
 with ui.sidebar(width=400):
-    ui.markdown("<strong>Simulatie instellingen</strong>");
+    ui.markdown("<strong>Instellingen simulatie</strong>");
     #USER INPUT ELEMENTS
-    ui.input_numeric("sampleSize", "Steekproefgrootte n",value=500,min=1,max=100000);
+    ui.input_numeric("sampleSize", "Steekproefgrootte n",value=500,min=100,max=10000);
     ui.input_slider("observedProportion", "Geobserveerde steekproefproportie p\u0302", value=0.32, min=0, max=1, step=0.005);
     ui.input_slider("nullHypothesis", "Nulhypothese p\u2080", value=0.3, min=0, max=1, step=0.005);
-    ui.input_numeric("simulationSize", "Aantal simulaties onder de nulhypothese",value=10000,min=1,max=MAX_SIMS,step=50);
+    ui.input_numeric("simulationSize", "Aantal simulaties onder de nulhypothese",value=10000,min=1,max=MAX_SIMS,step=1);
     ui.input_radio_buttons("testType", "Type van de test:", TEST_TYPES, selected="right", inline=False)
     ui.markdown("<strong>Visualisatie instellingen</strong>");
     ui.input_checkbox("showThreshold", "Toon drempelwaarde op de histogrammen",value=False);
     ui.input_switch("useProportions", "Gebruik proporties",False);
 
-ui.markdown("<strong>Simulatieresultaten</strong>");
+ui.markdown("<strong>Resultaten simulatie</strong>");
 
 #INTERMEDIATE ELEMENTS
 #Create a number generator with seed 1
@@ -37,8 +37,10 @@ selectedResults = reactive.value(results._value[0:10000]);
 def updateData():
   try:
     sampleSize = int(input.sampleSize());
+    if sampleSize < 100:
+      sampleSize=100;
   except:
-    sampleSize = 1; #Default value when sampleSize is left empty
+    sampleSize = 100; #Default value when sampleSize is left empty
   nullHypothesis = input.nullHypothesis();
   results.set(rng.binomial(sampleSize, nullHypothesis, MAX_SIMS));
   
@@ -52,6 +54,8 @@ def selectSubsetData():
 @render.plot(alt="A histogram")
 def showHistogram():
   sampleSize = input.sampleSize();
+  if sampleSize < 100:
+      sampleSize=100;
   observedProportion = input.observedProportion();
   showCutoffLine = input.showThreshold();
   nullHypothesis = input.nullHypothesis();
@@ -75,8 +79,8 @@ def showHistogram():
           patches[i].set_facecolor('orange')
       case 'twosided':
         distance = abs(nullHypothesis - observedProportion)
-        leftThreshold = sampleSize*(nullHypothesis - distance);
-        rightThreshold = sampleSize*(nullHypothesis + distance);
+        leftThreshold = round(sampleSize*(nullHypothesis - distance));
+        rightThreshold = round(sampleSize*(nullHypothesis + distance));
         if not(bins[i] >= leftThreshold and bins[i]<= rightThreshold):
           patches[i].set_facecolor('orange')
 
@@ -111,8 +115,8 @@ def showHistogram():
           patches[i].set_facecolor('orange')
       case 'twosided':
         distance = abs(nullHypothesis - observedProportion)
-        leftThreshold = int(sampleSize*(nullHypothesis - distance));
-        rightThreshold = int(sampleSize*(nullHypothesis + distance));
+        leftThreshold = round(sampleSize*(nullHypothesis - distance));
+        rightThreshold = round(sampleSize*(nullHypothesis + distance));
         if not(bins[i] > leftThreshold and bins[i] < rightThreshold):
           patches[i].set_facecolor('orange')
 
@@ -140,6 +144,8 @@ with ui.card():
   @render.ui
   def calculateThresholdValue():
     sampleSize = input.sampleSize();
+    if sampleSize < 100:
+      sampleSize=100;
     observedProportion = input.observedProportion();
     nullHypothesis = input.nullHypothesis();
     threshold = np.round(sampleSize*observedProportion,2);
@@ -149,8 +155,8 @@ with ui.card():
         x = ui.p('X \u2265' + str(threshold))
     if "twosided" in input.testType():
       distance = abs(nullHypothesis - observedProportion)
-      leftThreshold = sampleSize*(nullHypothesis - distance);
-      rightThreshold = sampleSize*(nullHypothesis + distance);
+      leftThreshold = round(sampleSize*(nullHypothesis - distance));
+      rightThreshold = round(sampleSize*(nullHypothesis + distance));
       x = ui.p('X \u2264' + str(int(leftThreshold)) + ' of X \u2265 ' + str(int(rightThreshold)))
     return x
 
@@ -159,6 +165,8 @@ with ui.card():
   @render.ui
   def calculateEmpiricalPvalue():
     sampleSize = input.sampleSize();
+    if sampleSize < 100:
+      sampleSize=100;
     simulationSize = input.simulationSize();
     if simulationSize > MAX_SIMS:
       simulationSize = MAX_SIMS;
@@ -175,8 +183,8 @@ with ui.card():
         x = ui.p(str(nbLargerSampleProportions) + '/' + str(simulationSize) + '=' + str(np.round(nbLargerSampleProportions/simulationSize,4)));
     if "twosided" in input.testType():
       distance = abs(nullHypothesis - observedProportion)
-      leftThreshold = sampleSize*(nullHypothesis - distance);
-      rightThreshold = sampleSize*(nullHypothesis + distance);
+      leftThreshold = round(sampleSize*(nullHypothesis - distance));
+      rightThreshold = round(sampleSize*(nullHypothesis + distance));
       nbLargerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData>=rightThreshold])
       nbSmallerSampleProportions = np.count_nonzero(selectedResultsData[selectedResultsData<=leftThreshold])
       x = ui.p(str(int(nbLargerSampleProportions+nbSmallerSampleProportions)) + '/' + str(simulationSize) + '=' + str(np.round((nbSmallerSampleProportions+nbLargerSampleProportions)/simulationSize,4)));
@@ -186,11 +194,25 @@ with ui.accordion(id="acc", open=False,):
   with ui.accordion_panel("Tabel met simulatiedata"):  
     @render.data_frame  
     def showTable():
+      sampleSize = input.sampleSize();
+      if sampleSize < 100:
+        sampleSize=100;
+      nullHypothesis = input.nullHypothesis();
+      observedProportion = input.observedProportion();
+
       my_array = np.zeros((input.simulationSize(),4));
       my_array[0:,0] = np.arange(1,np.size(selectedResults.get())+1);
       my_array[0:,1] = selectedResults.get();
-      my_array[0:,2] = selectedResults.get()/input.sampleSize();
-      my_array[0:,3] = selectedResults.get()>(input.observedProportion()*input.sampleSize());
+      my_array[0:,2] = selectedResults.get()/sampleSize;
+      if "left" in input.testType():
+        my_array[0:,3] = selectedResults.get()<=(observedProportion*sampleSize);
+      if "right" in input.testType():
+        my_array[0:,3] = selectedResults.get()>=(observedProportion*sampleSize);
+      if "twosided" in input.testType():
+        distance = abs(nullHypothesis - observedProportion)
+        leftThreshold = round(sampleSize*(nullHypothesis - distance));
+        rightThreshold = round(sampleSize*(nullHypothesis + distance));
+        my_array[0:,3] = np.logical_or(selectedResults.get() <= leftThreshold, selectedResults.get() >= rightThreshold)
 
       df = pd.DataFrame(my_array, columns=['Simulatie nummer','# successen','Proportie','Drempelwaarde overschreden?'])
       return render.DataGrid(df)
